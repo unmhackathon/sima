@@ -1,233 +1,248 @@
-# ServiceNow Ticket Update Agent
-
-A Python listener agent that watches an Excel file for ServiceNow-like ticket data, identifies open tickets needing attention, suggests updates, escalates critical issues, and provides a Streamlit dashboard for monitoring.
-
----
-
-## What this project does
-
-- Watches a configured Excel file continuously.
-- Reads open ticket rows from Excel.
-- Applies simple NLP-style analysis on ticket descriptions and comments.
-- Scores ticket criticality using priority, staleness, sentiment, urgency, and intent.
-- Prints suggested ticket updates for tickets requiring attention.
-- Prints critical escalation summaries for lead review.
-- Displays dashboard metrics, flagged tickets, and resolution history.
-- Falls back to sample data when Excel is unavailable.
+# **ServiceNow Ticket Update Agent**  
+A lightweight Python-based automation agent that identifies stale ServiceNow tickets, analyzes user concerns using NLP, suggests meaningful updates, and escalates critical tickets to the Lead via Teams or email.
 
 ---
 
-## Project structure
+## **📌 Features**
+
+- 🔄 **ServiceNow Integration**  
+  Fetch active incidents using the ServiceNow REST API.
+
+- 🕒 **Stale Ticket Detection**  
+  Flags tickets with no updates beyond a configurable threshold.
+
+- 🧠 **NLP-Based Analysis**  
+  Extracts sentiment, urgency, and intent from ticket descriptions and comments.
+
+- 🚨 **Criticality Scoring**  
+  Combines priority, freshness, sentiment, urgency, and intent.
+
+- ✍️ **Suggested Updates**  
+  Auto-generates context-aware ticket updates.
+
+- 📣 **Escalation Notifications**  
+  Sends critical ticket summaries to Leads via Teams webhook or email.
+
+- 🧩 **Minimal Architecture**  
+  Easy to deploy as a cron job, Azure Function, or AWS Lambda.
+
+---
+
+## **📁 Project Structure**
 
 ```
-.
-+-- analyzer.py
-+-- config.py
-+-- dashboard.py
-+-- escalation.py
-+-- fetcher.py
-+-- main.py
-+-- nlp_processor.py
-+-- README.md
-+-- requirements.txt
-+-- suggestion_engine.py
-+-- tracker.py
-+-- utils.py
+servicenow-agent/
+│
+├── main.py
+├── config.py
+├── fetcher.py
+├── analyzer.py
+├── nlp_processor.py
+├── suggestion_engine.py
+├── escalation.py
+├── utils.py
+└── requirements.txt
 ```
 
 ---
 
-## Components
+## **⚙️ Architecture Overview**
 
-- `main.py`
-  - Runs the listener loop.
-  - Polls the Excel file for changes.
-  - Processes ticket rows when the file changes.
+### **High-Level Flow**
 
-- `dashboard.py`
-  - Provides a Streamlit dashboard for metrics and live ticket status.
+```
+Scheduler
+   ↓
+ServiceNow API → Ticket Fetcher
+   ↓
+Ticket Analyzer → NLP Processor
+   ↓
+Suggestion Engine
+   ↓
+Escalation Module → Teams/Email
+   ↓
+(Optional) Dashboard
+```
 
-- `tracker.py`
-  - Maintains history and metrics for tickets resolved after being flagged.
+### **Core Components**
 
-- `config.py`
-  - Contains Excel source settings and thresholds.
-  - Defines polling interval and fallback behavior.
-
-- `fetcher.py`
-  - Reads ticket rows from the configured Excel file.
-  - Supports a fallback sample dataset.
-
-- `nlp_processor.py`
-  - Detects sentiment, urgency, intent, and concern from ticket text.
-
-- `analyzer.py`
-  - Computes ticket staleness and criticality scores.
-
-- `suggestion_engine.py`
-  - Generates suggested update text for tickets.
-
-- `escalation.py`
-  - Prints critical escalation summaries instead of sending real alerts.
-
-- `utils.py`
-  - Helper formatting functions.
+| Component | Responsibility |
+|----------|----------------|
+| `fetcher.py` | Connects to ServiceNow and retrieves tickets |
+| `analyzer.py` | Applies freshness rules and base scoring |
+| `nlp_processor.py` | Extracts sentiment, urgency, intent |
+| `suggestion_engine.py` | Computes criticality & suggests updates |
+| `escalation.py` | Sends notifications to Leads |
+| `main.py` | Orchestrates the entire agent run |
 
 ---
 
-## Data source
+## **🔧 Installation**
 
-The agent supports a single ticket source:
+### **1. Clone the repository**
+```bash
+git clone https://github.com/<your-username>/servicenow-agent.git
+cd servicenow-agent
+```
 
-- `tickets.xlsx` — local Excel file.
-
-The agent reads `tickets.xlsx` and falls back to sample data only if the Excel file is unavailable.
-
-`activity_logs` is supported as an optional column and can be used for additional ticket context.
-
-### Required columns
-
-The ticket file should include these columns in the first row:
-
-- `number`
-- `short_description`
-- `description`
-- `priority`
-- `state`
-- `sys_updated_on`
-- `sys_created_on`
-- `comments`
-
-Column aliases are supported, such as `summary` → `short_description` and `updated_on` → `sys_updated_on`.
-
-Open ticket rows should use a state other than `closed`, `resolved`, `cancelled`, or `canceled`.
-
----
-
-## Configuration
-
-Key settings in `config.py`:
-
-- `EXCEL_FILE_PATH` � path to the Excel file to watch.
-- `POLL_INTERVAL_SECONDS` � how often the agent checks for file changes.
-- `STALE_THRESHOLD_HOURS` � hours before a ticket becomes stale.
-- `CRITICAL_THRESHOLD` � score threshold for escalation.
-
----
-
-## Running the listener
-
-Install dependencies:
-
+### **2. Install dependencies**
 ```bash
 pip install -r requirements.txt
 ```
 
-Then run:
+### **3. Configure environment**
+Edit `config.py`:
 
-```bash
-python main.py --once
+```python
+SERVICENOW_URL = "https://<instance>.service-now.com/api/now/table/incident"
+SERVICENOW_USER = "<username>"
+SERVICENOW_PASSWORD = "<password>"
+
+STALE_THRESHOLD_HOURS = 24
+ESCALATION_EMAIL = "lead@example.com"
+TEAMS_WEBHOOK_URL = "<teams_webhook>"
 ```
 
-The agent will process the Excel file once and exit.
+---
 
-To run continuously and watch for file changes:
+## **🚀 Running the Agent**
 
+### **Local Run**
 ```bash
 python main.py
 ```
 
-The agent will poll the Excel file and process tickets whenever the file is updated.
-
----
-
-## Running the dashboard
-
-Install dependencies:
-
+### **Cron Job (Linux)**
+Run every hour:
 ```bash
-pip install -r requirements.txt
+0 * * * * /usr/bin/python3 /path/to/main.py >> /var/log/servicenow_agent.log 2>&1
 ```
 
-Then run:
+### **Azure Function**
+Wrap `run_agent()` inside a timer-trigger function.
 
-```bash
-streamlit run dashboard.py
+### **AWS Lambda**
+Use CloudWatch Events to trigger the Lambda periodically.
+
+---
+
+## **🧠 NLP Logic**
+
+### **Sentiment Analysis**
+Using TextBlob polarity:
+- `> 0.1` → positive  
+- `< -0.1` → negative  
+- otherwise → neutral  
+
+### **Urgency Detection**
+Keywords:
+```
+urgent, asap, immediately, down, critical
 ```
 
-Open the URL shown by Streamlit in your browser to view live ticket metrics and suggestions.
+### **Intent Detection**
+Keywords:
+```
+blocked, error, failed, not working
+```
 
 ---
 
-## Ticket analysis
+## **🔥 Criticality Scoring**
 
-### Sentiment
+| Condition | Score |
+|----------|-------|
+| Priority 1–2 | +3 |
+| Stale > 48 hours | +2 |
+| Negative sentiment | +2 |
+| Intent = blocked | +3 |
+| High urgency | +2 |
 
-Detects negative terms such as:
-- `urgent`
-- `down`
-- `blocked`
-- `failed`
-- `error`
-
-### Urgency
-
-Detects high urgency from words like:
-- `urgent`
-- `asap`
-- `immediately`
-- `critical`
-- `down`
-- `outage`
-
-### Intent
-
-Detects issue intent such as:
-- `blocked`
-- `failed`
-- `not_working`
-- `informational`
-
-### Concern extraction
-
-Maps text to common issue categories such as VPN, email, network, login, server/database, and application issues.
+### **Levels**
+- **≥ 6** → Critical (Escalate)  
+- **3–5** → Needs Update  
+- **< 3** → Monitor  
 
 ---
 
-## Criticality scoring
+## **📣 Escalation Example (Teams Webhook)**
 
-Score contributions:
-
-- Priority 1 or 2 ? +3
-- Priority 3 ? +1
-- Stale ticket ? +2
-- Negative sentiment ? +2
-- High urgency ? +2
-- Blocked/failed/not working intent ? +3
-
-Severity levels:
-
-- `critical` � score >= `CRITICAL_THRESHOLD`
-- `needs_update` � score >= 3 or ticket is stale
-- `monitor` � otherwise
+```python
+message = {
+    "text": "Critical Ticket Escalation Report\nINC0012345 | VPN down | Score: 7"
+}
+requests.post(TEAMS_WEBHOOK_URL, json=message)
+```
 
 ---
 
-## Dependencies
+## **🧪 Sample ServiceNow API Call**
 
-- `openpyxl`
-- `streamlit`
+```python
+import requests
+
+url = "https://<instance>.service-now.com/api/now/table/incident"
+params = {"sysparm_query": "active=true^priority<=3", "sysparm_limit": "10"}
+
+response = requests.get(url, auth=(USERNAME, PASSWORD), params=params)
+```
 
 ---
 
-## Future extension
+## **📜 Requirements**
 
-When ServiceNow is hooked up, the same analysis flow can be reused by replacing `fetcher.py` with a ServiceNow API connector.
+```
+requests
+textblob
+spacy
+```
 
 ---
 
-## Notes
+## **🛡️ Security**
 
-- The current agent uses Excel as the data source.
-- It watches the file and reprocesses tickets on each change.
-- Critical escalations are printed rather than sent.
+- Store credentials in Azure Key Vault / AWS Secrets Manager.  
+- Use read-only ServiceNow API roles.  
+- Avoid logging sensitive ticket content.  
+
+---
+
+## **📅 Implementation Timeline**
+
+| Week | Deliverables |
+|------|--------------|
+| Week 1 | API integration, freshness rules |
+| Week 2 | NLP processor, suggestion engine |
+| Week 3 | Escalation module, integration testing |
+| Week 4 | Optimization, dashboard (optional), deployment |
+
+---
+
+## **🤝 Contributing**
+
+Pull requests are welcome.  
+For major changes, open an issue first to discuss what you’d like to modify.
+
+---
+
+## **📄 License**
+
+MIT License (or your preferred license).
+
+---
+
+## **💬 Support**
+
+For questions or enhancements, contact:  
+**Ramkumar – IT Project/Technical Manager**
+
+---
+
+If you want, I can also generate:
+
+- A **Dockerfile**  
+- A **GitHub Actions CI/CD pipeline**  
+- A **project wiki**  
+- A **sample dashboard UI**  
+
+Just tell me what you want next.
