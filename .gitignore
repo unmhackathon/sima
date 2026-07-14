@@ -1,5 +1,16 @@
-__pycache__/
 *.pyc
+__pycache__/
 agent_state.json
 .DS_Store
 .venv/
+__pycache__/analyzer.cpython-314.pyc
+__pycache__/config.cpython-314 2.pyc
+__pycache__/config.cpython-314.pyc
+__pycache__/dashboard.cpython-314.pyc
+__pycache__/escalation.cpython-314.pyc
+__pycache__/fetcher.cpython-314.pyc
+__pycache__/main.cpython-314.pyc
+__pycache__/nlp_processor.cpython-314.pyc
+__pycache__/suggestion_engine.cpython-314.pyc
+__pycache__/tracker.cpython-314.pyc
+*.pyc
