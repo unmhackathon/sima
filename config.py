@@ -18,3 +18,5 @@ EMAIL_USER = ""
 EMAIL_PASSWORD = ""
 
 LOG_LEVEL = "INFO"
+
+SQLITE_AUDIT_DB = "ServiceNow_Sima.db"

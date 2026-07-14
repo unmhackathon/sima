@@ -28,6 +28,16 @@ def suggestion_text(ticket: dict, evaluation: dict) -> str:
         "Set the expected next update time and the owner responsible for follow-up.",
     ]
 
+    if evaluation.get("invalid_activity_logs"):
+        action_items.append(
+            "Review the activity log content and replace invalid or placeholder entries with actual progress details."
+        )
+
+    if evaluation.get("missing_update_data"):
+        action_items.append(
+            "Capture the latest update or comment on ticket progress because the ticket is missing fresh update data."
+        )
+
     if nlp["urgency"] == "high":
         action_items.insert(0, "Mark this ticket as high urgency and notify the appropriate resolver team.")
 

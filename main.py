@@ -5,6 +5,7 @@ from pathlib import Path
 
 import config
 from analyzer import evaluation
+from audit_db import append_needs_update_records
 from escalation import notify_lead
 from fetcher import fetch_active_incidents
 from suggestion_engine import build_ticket_summary, suggestion_text
@@ -21,6 +22,7 @@ def process_tickets() -> None:
     logger.info("Processing %d tickets", len(tickets))
 
     escalations = []
+    needs_update_records = []
     for ticket in tickets:
         result = evaluation(ticket)
         summary = build_ticket_summary(ticket, result)
@@ -30,13 +32,53 @@ def process_tickets() -> None:
             suggestion = suggestion_text(ticket, result)
             print("\n" + suggestion + "\n")
 
+        reasons = []
+        if result.get("stale"):
+            reasons.append("stale")
+        if result.get("invalid_activity_logs"):
+            reasons.append("invalid activity logs")
+        if result.get("missing_update_data"):
+            reasons.append("missing update data")
+
+        if reasons:
+            logger.warning(
+                "Ticket %s flagged for %s",
+                ticket.get("number"),
+                ", ".join(reasons),
+            )
+
+        if result["severity"] == "needs_update":
+            needs_update_records.append({
+                "number": ticket.get("number"),
+                "priority": ticket.get("priority"),
+                "state": ticket.get("state"),
+                "severity": result["severity"],
+                "score": result["score"],
+                "stale": result["stale"],
+                "invalid_activity_logs": result.get("invalid_activity_logs", False),
+                "missing_update_data": result.get("missing_update_data", False),
+                "summary": summary,
+                "short_description": ticket.get("short_description", ""),
+                "description": ticket.get("description", ""),
+                "comments": ticket.get("comments", ""),
+                "activity_logs": ticket.get("activity_logs", ""),
+                "sys_updated_on": ticket.get("sys_updated_on", ""),
+                "sys_created_on": ticket.get("sys_created_on", ""),
+                "reason": ", ".join(reasons),
+            })
+
         if result["severity"] == "critical":
             escalations.append({
                 "number": ticket.get("number"),
                 "priority": ticket.get("priority"),
                 "score": result["score"],
                 "summary": ticket.get("short_description", ""),
+                "reasons": reasons,
             })
+
+    if needs_update_records:
+        append_needs_update_records(config.SQLITE_AUDIT_DB, needs_update_records)
+
 
     if escalations:
         logger.info("Escalating %d critical tickets", len(escalations))

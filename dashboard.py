@@ -50,6 +50,8 @@ def process_dashboard_tickets() -> tuple[list[dict[str, Any]], dict[str, Any], d
             "priority": priority,
             "severity": result["severity"],
             "score": result["score"],
+            "invalid_activity_logs": result.get("invalid_activity_logs", False),
+            "missing_update_data": result.get("missing_update_data", False),
             "suggestion": suggestion_text(ticket, result),
             "last_updated": ticket.get("sys_updated_on"),
         })
@@ -130,43 +132,44 @@ def run_dashboard() -> None:
         help="Enter ticket number, keyword, or phrase to filter the ticket list.",
     )
 
-    if st.button("Show matching tickets"):
-        filtered_tickets = []
-        query = search_text.strip().lower()
-        for ticket in tickets:
-            if severity_filter != "All" and ticket["severity"] != severity_filter:
-                continue
-            if query:
-                text = " ".join(
-                    [
-                        str(ticket.get("number", "")),
-                        str(ticket.get("summary", "")),
-                        str(ticket.get("state", "")),
-                        str(ticket.get("priority", "")),
-                    ]
-                ).lower()
-                if query not in text:
-                    continue
-            filtered_tickets.append(ticket)
-
-        if filtered_tickets:
-            st.markdown(f"### {len(filtered_tickets)} matching tickets")
-            st.table(
+    filtered_tickets = []
+    query = search_text.strip().lower()
+    for ticket in tickets:
+        if severity_filter != "All" and ticket["severity"] != severity_filter:
+            continue
+        if query:
+            text = " ".join(
                 [
-                    {
-                        "Number": ticket["number"],
-                        "Priority": ticket["priority"],
-                        "Severity": ticket["severity"],
-                        "State": ticket["state"],
-                        "Last updated": ticket["last_updated"],
-                    }
-                    for ticket in filtered_tickets
+                    str(ticket.get("number", "")),
+                    str(ticket.get("summary", "")),
+                    str(ticket.get("state", "")),
+                    str(ticket.get("priority", "")),
+                    str(ticket.get("invalid_activity_logs", "")),
+                    str(ticket.get("missing_update_data", "")),
                 ]
-            )
-        else:
-            st.info("No tickets matched the selected filters.")
+            ).lower()
+            if query not in text:
+                continue
+        filtered_tickets.append(ticket)
+
+    if filtered_tickets:
+        st.markdown(f"### {len(filtered_tickets)} matching tickets")
+        st.table(
+            [
+                {
+                    "Number": ticket["number"],
+                    "Priority": ticket["priority"],
+                    "Severity": ticket["severity"],
+                    "State": ticket["state"],
+                    "Invalid activity logs": ticket["invalid_activity_logs"],
+                    "Missing update data": ticket["missing_update_data"],
+                    "Last updated": ticket["last_updated"],
+                }
+                for ticket in filtered_tickets
+            ]
+        )
     else:
-        st.info("Use the filters above and click Show matching tickets to display incidents.")
+        st.info("No tickets matched the selected filters.")
 
 
 if __name__ == "__main__":

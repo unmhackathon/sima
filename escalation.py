@@ -21,8 +21,12 @@ def notify_lead(tickets: list[dict]) -> None:
         "",
     ]
     for ticket in tickets:
+        notes = []
+        if ticket.get("reasons"):
+            notes.append(f"Reasons: {', '.join(ticket['reasons'])}")
+        reason_text = f" | {'; '.join(notes)}" if notes else ""
         lines.append(
-            f"{ticket['number']} | Priority {ticket.get('priority')} | Score {ticket['score']} | {ticket['summary']}"
+            f"{ticket['number']} | Priority {ticket.get('priority')} | Score {ticket['score']} | {ticket['summary']}{reason_text}"
         )
     body = "\n".join(lines)
 
